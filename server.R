@@ -1,61 +1,14 @@
-#########################################
-#Importing the required libraries required
-#########################################
-
-
-
-#Shiny libraries
-library(shiny) 
+library(shiny)
 library(shinydashboard)
-library(shinyjs)
-library(shinyalert)
-
-#Excel Read library
-library("readxl")
-
-#It creates an HTML widget to display R data objects with DataTables
 library(DT)
-
-#User password encryption and decryption library
+library(shinyjs)
 library(sodium)
-
-#SQLite Database interface library
 library(RSQLite)
-
-#Date function libraries
+library(plotly)
 library(lubridate)
+library(readxl)
 
-
-#########################################
-# Setting the Working Directory
-#########################################
-setwd("D:\\Shiny_Radius\\")
-
-
-#########################################
-# Setting the Database Connection
-#########################################
-conn <- dbConnect(RSQLite::SQLite(), "RadiusDB.db")
-
-
-
-
-
-
-
-
-#########################################
-# Max File Size
-#########################################
-
-options(shiny.maxRequestSize = 20*1024^2)
-
-
-
-
-
-
-
+setwd("E:\\ShinyApp\\")
 
 #########################################
 # File Used in the Sales Summary
@@ -67,17 +20,164 @@ monthStart <- function(x) {
   as.Date(x)
 }
 
-Sales_Summarized<-read.csv("D:\\Shiny_Radius\\Datasets\\Sales_Summarized.csv")
+Sales_Summarized<-read.csv("E:\\ShinyApp\\datasets\\Sales_Summarized.csv")
 
 Sales_Summarized$Date=ymd(Sales_Summarized$Date)
 
 
+# Main login screen
+loginpage <- div(id = "loginpage", style = "width: 500px; max-width: 100%; margin: 0 auto; padding: 20px;",
+                 img(src='background2.PNG',style="
+                     width: 70%;
+                     display: block;
+                     margin-left: auto;
+                     margin-right: auto;"),
+                 wellPanel(
+                   tags$h2("LOG IN", class = "text-center", style = "padding-top: 0;color:#333; font-weight:600;"),
+                   textInput("userName", placeholder="Username", label = tagList(icon("user"), "Username")),
+                   passwordInput("passwd", placeholder="Password", label = tagList(icon("unlock-alt"), "Password")),
+                   br(),
+                   div(
+                     style = "text-align: center;",
+                     actionButton("login", "SIGN IN", style = "color: white; background-color:#3c8dbc;
+                                  padding: 10px 15px; width: 150px; cursor: pointer;
+                                  font-size: 18px; font-weight: 600;"),
+                     shinyjs::hidden(
+                       div(id = "nomatch",
+                           tags$p("Oops! Incorrect username or password!",
+                                  style = "color: red; font-weight: 600; 
+                                  padding-top: 5px;font-size:16px;", 
+                                  class = "text-center")))
+                     ))
+                     )
+
 
 
 
 #########################################
-# Server for Conditional Computation
+# Setting the Database Connection
 #########################################
+conn <- dbConnect(RSQLite::SQLite(), "RadiusDB.db")
+
+
+#########################################
+# File Upload Page Body
+#########################################
+FileUploadRow <- fluidRow( 
+  box(
+    selectInput(inputId = 'filetype',label = 'Select File Type',choices = c("CALL ACTIVITY","EMAIL","PROMO DISPLAY","PROMO SEARCH","SPEND METRICS","SALES"),selected = "SALES"),
+    fileInput('file1', h4('Choose xlsx file to upload'),
+              accept = c(".xlsx")
+    ),
+    tags$hr(),
+    sliderInput(inputId='sheetno', label="Sheet Number", min=1, max=10, value=1, step =1),
+    textInput(inputId = 'nullvalues',label='NA Values',value = 'NA'),
+    tags$hr(),
+    actionButton("filesave", "Save File", style = "color: white; background-color:#3c8dbc;
+                 padding: 10px 15px; width: 150px; cursor: pointer;
+                 font-size: 18px; font-weight: 600;"),
+    width = 4,height = 800,status = "info"
+    )
+  ,box(
+    h4('Table Output'),
+    DT::dataTableOutput('contents'),
+    width = 8,height = 800,status = "info"
+  )
+  )
+
+
+
+
+
+#########################################
+# Main Page Body
+#########################################
+MainPageRow1 <- fluidRow( 
+  box(
+    h3("Sales"),
+    plotlyOutput("salesplot"),
+    width = 4,height = 400,status = "info"
+  )
+  ,box(
+    h3("Promotion"),actionButton("button", "GET DETAILED MARKETING ANALYSIS"),
+    width = 8,height = 400,background = 'blue'
+  )
+)
+
+MainPageRow2 <- fluidRow( 
+  box(
+    h3("ROI Analysis"),
+    width = 3,height = 400,background = 'purple'
+  )
+  ,box(
+    h3("Marketing Mix"),
+    width = 9,height = 400,background = 'orange'
+  )
+  
+  
+)
+
+
+
+
+
+#########################################
+# Marketing Analysis Body
+#########################################
+MarketPageRow1 <- fluidRow( 
+  box(
+    h3("Geography Wise Marketing Activity"),
+    width = 4,height = 300,background = 'teal',textOutput("SliderText")
+  )
+  ,box(
+    h3("Channel wise Marketing Activity"),
+    width = 4,height = 300,background = 'red'
+  )  ,box(
+    h3("Franchise Marketing Activity"),
+    width = 4,height = 300,background = 'lime'
+  )
+)
+
+MarketPageRow2 <- fluidRow( 
+  box(
+    h3("TRADITIONAL MEDIA MARKETING"),
+    h3("DIGITAL MEDIA"),
+    width = 12,height = 50,background = 'yellow'
+  )
+  
+  
+  
+)
+
+
+MarketPageRow3 <- fluidRow( 
+  box(
+    h3("Region wise Call Activity"),
+    width = 3,height = 350,background = 'green'
+  )
+  ,box(
+    h3("Ads showtime comparison on tv"),
+    width = 3,height = 350,background = 'red'
+  )  ,box(
+    h3("salesforce incentives"),
+    width = 3,height = 350,background = 'fuchsia'
+  )
+  ,box(
+    h3("target achieved %"),
+    width = 3,height = 350,background = 'black'
+  )
+  
+)
+
+#########################################
+# Max File Size
+#########################################
+
+options(shiny.maxRequestSize = 20*1024^2)
+
+
+
+
 server <- function(input, output, session) {
   
   #Importing User Table from the database
@@ -129,8 +229,6 @@ server <- function(input, output, session) {
     updateTabItems(session, "tabs", "Marketing_Analysis")
     
   })
-  
-  
   observe({ 
     if (USER$login == FALSE) {
       
@@ -312,13 +410,4 @@ server <- function(input, output, session) {
     shinyjs::reset("FileUpload")
   })
   
-  
-  
-  }
-
-
-#########################################
-# Disconnecting the DB after Use
-#########################################
-dbDisconnect(conn)
-
+}
